@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>D3 Line Chart Demo</title>
+    <meta charset="utf-8" />    
+
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    
+    <style>
+
+      svg{
+        border:1px solid #000;
+      }
+
+
+      path.link {
+        fill: none;
+        stroke-width: 3px;
+        cursor: default;
+      }
+
+      g path.link{
+        fill: none;
+        stroke-width: 3px;
+        cursor: default;
+
+      }
+       
+      svg:not(.active):not(.ctrl) path.link {
+        cursor: pointer;
+      }
+       
+      path.link.dragline {
+        pointer-events: none;
+      }
+       
+      path.link.hidden {
+        stroke-width: 0;
+      }
+
+    </style>
+
+  <body>
+
+    <div>
+      <button id="clear">Clear</button>
+      <input type="text" id="userName" />
+      <button id="connect">Connect</button>
+      <select id="filter">
+          <option value="all">all</option>
+      </select>
+    </div>
+
+    <div id="container">
+
+    </div>
+  <script type="text/javascript" src="paint.js"></script>
+  <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+  <script type="text/javascript">
+
+
+
+    var socket = io.connect('http://localhost:3300');
+
+
+
+    d3.select('#connect').on('click', function(d,i){
+
+        var userName = d3.select('#userName').node().value;
+
+        if(userName){
+
+            var color = "#" + Math.floor((Math.random() * 9) + 1) * 10
+                            + Math.floor((Math.random() * 9) + 1) * 10
+                            + Math.floor((Math.random() * 9) + 1) * 10;
+
+            var user = {userName : userName, color: color, path : []}; 
+
+            paintModule.addUser(user);
+
+            socket.emit('userConnect', user);
+        }else{
+          alert('Enter something valid man');
+        }
+    });
+
+
+    function renderFilterOptions(data){
+        d3.select("#filter")
+            .selectAll("option")
+            .data(data, function(d) { return d ? d.userName : d3.select(this).attr("value"); })
+            .enter()
+            .append("option")
+            .text(function(d){ return d.userName; })
+            .attr("value", function(d) { return d.userName;});
+    }
+
+    socket.on('clientConnect', function(data){
+
+        renderFilterOptions(data);
+
+        d3.select("#filter").on('change', function(d, i){
+
+          var val = this.value;
+          console.log(val);
+
+          paintModule.filterBy(val);
+
+        });
+
+          console.log(data);
+         paintModule.init(data);
+    });
+
+    socket.on('userConnect', function(data){
+
+        renderFilterOptions(data);
+
+        paintModule.registerEvents(function(data){
+              socket.emit(data.type, data);
+
+          });
+    });
+    
+    socket.on('newUser', function(data){
+      console.log("e");
+
+        d3.select("#filter")
+            .selectAll("option")
+            .data(data, function(d) { return d ? d.userName : d3.select(this).attr("value"); })
+            .enter()
+            .append("option")
+            .text(function(d){ return d.userName; })
+            .attr("value", function(d) { return d.userName;});
+
+        paintModule.addNewUser(data);
+    });
+
+    socket.on('line', function(data){
+        
+        paintModule.addLine(data);
+
+    });
+
+
+
+  </script>
+
+  </body>
+
+
+</html>
